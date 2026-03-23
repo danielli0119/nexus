@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusProxy | Professional CORS Gateway</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .gradient-text {
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 10px;
+        }
+
+        .loader {
+            border-top-color: #38bdf8;
+            animation: spinner 0.6s linear infinite;
+        }
+
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        iframe {
+            background: white;
+            border: none;
+            width: 100%;
+            height: 100%;
+        }
+
+        .tab-active {
+            border-bottom: 2px solid #38bdf8;
+            color: #38bdf8;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
+            <div>
+                <h1 class="text-3xl font-extrabold tracking-tight gradient-text">NexusProxy</h1>
+                <p class="text-slate-400 text-sm mt-1 font-medium">Bypass CORS and render remote pages instantly.</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/20 text-xs">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    CORS Bridge Active
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <!-- Navigation/Input Column -->
+            <div class="lg:col-span-1 space-y-6">
+                <div class="glass-card p-5 rounded-2xl shadow-xl">
+                    <label class="block text-xs font-bold uppercase tracking-widest mb-3 text-slate-500">Target Address</label>
+                    <input type="text" id="targetUrl" 
+                        class="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500/50 transition-all placeholder:text-slate-600 mb-4"
+                        placeholder="example.com">
+
+                    <label class="block text-xs font-bold uppercase tracking-widest mb-3 text-slate-500">Proxy Engine</label>
+                    <div class="space-y-2">
+                        <button onclick="setEngine('codetabs')" data-engine="codetabs" class="engine-btn w-full active bg-sky-600/20 text-sky-400 border border-sky-500/30 p-3 rounded-xl text-xs font-bold transition-all text-left flex justify-between items-center">
+                            CodeTabs (Best) <i class="fas fa-bolt"></i>
+                        </button>
+                        <button onclick="setEngine('allorigins')" data-engine="allorigins" class="engine-btn w-full bg-slate-800 text-slate-400 border border-slate-700 p-3 rounded-xl text-xs font-bold transition-all text-left flex justify-between items-center">
+                            AllOrigins <i class="fas fa-shield-alt"></i>
+                        </button>
+                    </div>
+
+                    <button onclick="handleFetch()" id="fetchBtn" class="w-full mt-6 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
+                        <i class="fas fa-play"></i> Browse
+                    </button>
+                </div>
+
+                <div class="glass-card p-5 rounded-2xl">
+                    <h3 class="text-xs font-bold uppercase tracking-widest mb-4 text-slate-500">Session History</h3>
+                    <div id="historyList" class="space-y-2 max-h-[300px] overflow-auto custom-scrollbar">
+                        <p id="historyEmpty" class="text-[10px] text-slate-600 italic">No history yet.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Display Column -->
+            <div class="lg:col-span-3 space-y-6">
+                <div class="glass-card rounded-2xl overflow-hidden flex flex-col h-[700px]">
+                    <!-- Tabs Header -->
+                    <div class="flex border-b border-slate-700 bg-slate-900/50">
+                        <button onclick="switchTab('preview')" id="tab-preview" class="px-6 py-4 text-xs font-bold uppercase tracking-widest tab-active transition-all">
+                            <i class="fas fa-desktop mr-2"></i> Live Preview
+                        </button>
+                        <button onclick="switchTab('code')" id="tab-code" class="px-6 py-4 text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-slate-300 transition-all">
+                            <i class="fas fa-code mr-2"></i> Source Code
+                        </button>
+                    </div>
+
+                    <!-- Content Area -->
+                    <div class="flex-grow relative bg-slate-950">
+                        <!-- Preview Tab -->
+                        <div id="view-preview" class="absolute inset-0">
+                            <iframe id="previewFrame" sandbox="allow-scripts allow-same-origin allow-forms" title="Proxy Preview"></iframe>
+                            <div id="framePlaceholder" class="absolute inset-0 flex flex-col items-center justify-center text-center p-12">
+                                <i class="fas fa-globe text-slate-800 text-6xl mb-4"></i>
+                                <h2 class="text-xl font-bold text-slate-600">No Page Loaded</h2>
+                                <p class="text-slate-700 max-w-xs mt-2 text-sm">Enter a URL on the left and click Browse to render the website here.</p>
+                            </div>
+                        </div>
+
+                        <!-- Code Tab -->
+                        <div id="view-code" class="absolute inset-0 hidden">
+                            <pre id="codeView" class="p-6 text-xs text-sky-200 overflow-auto h-full custom-scrollbar font-mono bg-slate-950"></pre>
+                        </div>
+
+                        <!-- Loader Overlay -->
+                        <div id="loaderOverlay" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+                            <div class="flex flex-col items-center gap-4">
+                                <div class="loader w-12 h-12 rounded-full border-4 border-slate-800"></div>
+                                <span class="text-sky-400 font-bold animate-pulse">Routing Traffic...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer Info -->
+                    <div class="p-3 bg-slate-900 border-t border-slate-700 flex justify-between items-center text-[10px] text-slate-500 font-mono">
+                        <span id="footerUrl">Waiting for request...</span>
+                        <div class="flex gap-4">
+                            <span id="footerStatus">READY</span>
+                            <span id="footerTime">0.00s</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-8 right-8 bg-sky-600 text-white px-6 py-3 rounded-xl shadow-2xl transition-all translate-y-20 opacity-0 pointer-events-none z-50 border border-sky-400/30">
+        <span id="toastMsg">Message</span>
+    </div>
+
+    <script>
+        let currentEngine = 'codetabs';
+        let currentContent = '';
+
+        function setEngine(engine) {
+            currentEngine = engine;
+            document.querySelectorAll('.engine-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-sky-600/20', 'text-sky-400', 'border-sky-500/30');
+                btn.classList.add('bg-slate-800', 'text-slate-400', 'border-slate-700');
+            });
+            const activeBtn = document.querySelector(`[data-engine="${engine}"]`);
+            activeBtn.classList.remove('bg-slate-800', 'text-slate-400', 'border-slate-700');
+            activeBtn.classList.add('active', 'bg-sky-600/20', 'text-sky-400', 'border-sky-500/30');
+        }
+
+        function switchTab(tab) {
+            document.getElementById('view-preview').classList.add('hidden');
+            document.getElementById('view-code').classList.add('hidden');
+            document.getElementById('tab-preview').classList.remove('tab-active');
+            document.getElementById('tab-code').classList.remove('tab-active');
+            document.getElementById('tab-preview').classList.add('text-slate-500');
+            document.getElementById('tab-code').classList.add('text-slate-500');
+
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-${tab}`).classList.add('tab-active');
+            document.getElementById(`tab-${tab}`).classList.remove('text-slate-500');
+        }
+
+        async function handleFetch() {
+            let urlInput = document.getElementById('targetUrl').value.trim();
+            if (!urlInput) return showToast("Enter a URL", "error");
+
+            if (!urlInput.startsWith('http')) urlInput = 'https://' + urlInput;
+            
+            const loader = document.getElementById('loaderOverlay');
+            const placeholder = document.getElementById('framePlaceholder');
+            const frame = document.getElementById('previewFrame');
+            const codeView = document.getElementById('codeView');
+            const startTime = performance.now();
+
+            loader.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+
+            let proxyUrl = currentEngine === 'codetabs' 
+                ? `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(urlInput)}`
+                : `https://api.allorigins.win/get?url=${encodeURIComponent(urlInput)}`;
+
+            try {
+                const response = await fetch(proxyUrl);
+                const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+                
+                let html = '';
+                if (currentEngine === 'allorigins') {
+                    const json = await response.json();
+                    html = json.contents;
+                } else {
+                    html = await response.text();
+                }
+
+                if (!html) throw new Error("Empty response from proxy.");
+
+                // Logic to handle relative paths in the proxy (simplistic attempt)
+                // We inject a <base> tag so images and CSS try to load from the target host
+                const baseUrl = new URL(urlInput).origin;
+                const baseTag = `<base href="${baseUrl}/">`;
+                const finalHtml = html.replace('<head>', `<head>${baseTag}`);
+
+                // Render in Frame
+                const doc = frame.contentWindow.document;
+                doc.open();
+                doc.write(finalHtml);
+                doc.close();
+
+                // Render in Code View
+                codeView.textContent = html;
+                currentContent = html;
+
+                // Update Footer
+                document.getElementById('footerUrl').textContent = urlInput;
+                document.getElementById('footerStatus').textContent = `${response.status} OK`;
+                document.getElementById('footerTime').textContent = `${duration}s`;
+
+                addToHistory(urlInput);
+                showToast("Page rendered successfully");
+            } catch (err) {
+                showToast("Failed to render page", "error");
+                document.getElementById('footerStatus').textContent = "ERROR";
+                placeholder.classList.remove('hidden');
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+
+        function addToHistory(url) {
+            const list = document.getElementById('historyList');
+            const empty = document.getElementById('historyEmpty');
+            if (empty) empty.remove();
+
+            const div = document.createElement('div');
+            div.className = "p-2 bg-slate-900 border border-slate-800 rounded-lg text-[10px] truncate hover:border-sky-500 cursor-pointer transition-all";
+            div.textContent = url;
+            div.onclick = () => {
+                document.getElementById('targetUrl').value = url;
+                handleFetch();
+            };
+            list.prepend(div);
+        }
+
+        function showToast(msg, type = "success") {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').textContent = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100', type === 'success' ? 'bg-sky-600' : 'bg-red-600');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+                toast.classList.remove('translate-y-0', 'opacity-100');
+            }, 3000);
+        }
+
+        document.getElementById('targetUrl').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleFetch();
+        });
+    </script>
+</body>
+</html>
